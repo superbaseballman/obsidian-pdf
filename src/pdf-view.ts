@@ -1,5 +1,6 @@
 import { ItemView, WorkspaceLeaf, TFile, Notice, App, Modal, Setting } from "obsidian";
 import * as pdfjsLib from "pdfjs-dist";
+import { PDFDocument, rgb, StandardFonts } from "pdf-lib";
 import type {
   PDFDocumentProxy,
   PDFPageProxy,
@@ -144,6 +145,9 @@ export class PdfEditorView extends ItemView {
   // Auto-save timer
   autoSaveTimer: number | null = null;
 
+  // System fonts cache
+  systemFonts: string[] = [];
+
   constructor(leaf: WorkspaceLeaf, plugin: PdfEditorPlugin) {
     super(leaf);
     this.plugin = plugin;
@@ -162,12 +166,98 @@ export class PdfEditorView extends ItemView {
     return "file-text";
   }
 
+  /**
+   * Load system fonts using the Font Access API or fall back to common fonts.
+   */
+  private async loadSystemFonts(): Promise<string[]> {
+    // Try the modern Font Access API (Chromium 103+, Electron 20+)
+    try {
+      if ("queryLocalFonts" in window) {
+        const fonts = await (window as any).queryLocalFonts();
+        const fontFamilies = new Set<string>();
+        for (const font of fonts) {
+          if (font.family) {
+            fontFamilies.add(font.family);
+          }
+        }
+        if (fontFamilies.size > 0) {
+          return Array.from(fontFamilies).sort((a, b) => a.localeCompare(b));
+        }
+      }
+    } catch (e) {
+      console.warn("Font Access API not available:", e);
+    }
+
+    // Fallback: comprehensive list of common system fonts across platforms
+    return [
+      // Chinese fonts
+      "SimSun", "SimHei", "KaiTi", "FangSong", "Microsoft YaHei", "Microsoft JhengHei",
+      "PingFang SC", "PingFang TC", "Hiragino Sans GB", "STSong", "STHeiti",
+      "WenQuanYi Micro Hei", "WenQuanYi Zen Hei", "Noto Sans CJK SC", "Noto Sans CJK TC",
+      "Source Han Sans CN", "Source Han Sans TW",
+      // Western serif fonts
+      "Times New Roman", "Georgia", "Garamond", "Palatino", "Book Antiqua", "Cambria",
+      "Baskerville", "Didot", "Hoefler Text", "Minion Pro", "Adobe Garamond Pro",
+      // Western sans-serif fonts
+      "Arial", "Helvetica", "Verdana", "Tahoma", "Trebuchet MS", "Calibri", "Segoe UI",
+      "Roboto", "Open Sans", "Lato", "Montserrat", "Gotham", "Futura", "Gill Sans",
+      "Century Gothic", "Franklin Gothic Medium", "Myriad Pro", "Optima",
+      // Monospace fonts
+      "Consolas", "Courier New", "Monaco", "Menlo", "Source Code Pro", "Fira Code",
+      "JetBrains Mono", "Inconsolata", "IBM Plex Mono", "Ubuntu Mono", "Liberation Mono",
+      // Japanese fonts
+      "MS Gothic", "MS Mincho", "Hiragino Kaku Gothic Pro", "Yu Gothic", "Meiryo",
+      "Osaka", "IPAGothic", "IPAMincho",
+      // Korean fonts
+      "Malgun Gothic", "Gulim", "Dotum", "Batang", "Nanum Gothic", "Nanum Myeongjo",
+    ].sort((a, b) => a.localeCompare(b));
+  }
+
+  /**
+   * Get a display label for a font family value.
+   */
+  private getFontLabel(fontFamily: string): string {
+    const labelMap: Record<string, string> = {
+      "SimSun": "宋体",
+      "SimHei": "黑体",
+      "KaiTi": "楷体",
+      "FangSong": "仿宋",
+      "Microsoft YaHei": "微软雅黑",
+      "Microsoft JhengHei": "微软正黑",
+      "PingFang SC": "苹方-简",
+      "PingFang TC": "苹方-繁",
+      "Hiragino Sans GB": "冬青黑体",
+      "STSong": "华文宋体",
+      "STHeiti": "华文黑体",
+      "WenQuanYi Micro Hei": "文泉驿微米黑",
+      "WenQuanYi Zen Hei": "文泉驿正黑",
+      "Noto Sans CJK SC": "思源黑体-简",
+      "Noto Sans CJK TC": "思源黑体-繁",
+      "Source Han Sans CN": "思源黑体-简",
+      "Source Han Sans TW": "思源黑体-繁",
+      "Times New Roman": "Times New Roman",
+      "Arial": "Arial",
+      "Helvetica": "Helvetica",
+      "Verdana": "Verdana",
+      "Calibri": "Calibri",
+      "Segoe UI": "Segoe UI",
+      "Consolas": "Consolas",
+      "Courier New": "Courier New",
+      "Monaco": "Monaco",
+      "Menlo": "Menlo",
+    };
+    return labelMap[fontFamily] || fontFamily;
+  }
+
   async onOpen(): Promise<void> {
     this.containerEl = this.contentEl;
     this.containerEl.empty();
     this.containerEl.addClass("pdf-editor-container");
     // Make the container focusable so it can receive keyboard events.
     this.containerEl.setAttribute("tabindex", "0");
+
+    // Load system fonts before creating the toolbar
+    this.systemFonts = await this.loadSystemFonts();
 
     this.createToolbar();
     this.createMainContent();
@@ -255,6 +345,18 @@ export class PdfEditorView extends ItemView {
     // Sidebar toggle
     this.createToolButton(navGroup, "panel-left", "侧边栏", () => {
       this.toggleSidebar();
+    });
+
+    // Save annotations button
+    this.createToolButton(navGroup, "save", "保存注释", () => {
+      this.saveAnnotations().then(() => {
+        new Notice("注释已保存");
+      });
+    });
+
+    // Export to PDF button (embeds annotations into PDF)
+    this.createToolButton(navGroup, "download", "导出注释到PDF", () => {
+      this.exportAnnotationsToPdf();
     });
 
     // Previous page
@@ -468,21 +570,45 @@ export class PdfEditorView extends ItemView {
     const fontFamilySelect = this.textControlsContainer.createEl("select", {
       attr: { title: "字体" },
     });
-    [
-      { label: "默认", value: "inherit" },
-      { label: "宋体", value: "SimSun, serif" },
-      { label: "黑体", value: "SimHei, sans-serif" },
-      { label: "楷体", value: "KaiTi, serif" },
-      { label: "Arial", value: "Arial, sans-serif" },
-      { label: "Times", value: "Times New Roman, serif" },
-      { label: "Monospace", value: "monospace" },
-    ].forEach((f) => {
-      fontFamilySelect.createEl("option", {
-        text: f.label,
-        value: f.value,
-      });
+
+    // Add default option
+    fontFamilySelect.createEl("option", {
+      text: "默认",
+      value: "inherit",
     });
-    fontFamilySelect.style.width = "80px";
+
+    // Group fonts by category for better organization
+    const chineseFonts = this.systemFonts.filter(f =>
+      /Sim|Song|Hei|Kai|Fang|YaHei|JhengHei|PingFang|Hiragino|STSong|STHeiti|WenQuanYi|Noto.*CJK|Source Han/i.test(f)
+    );
+    const westernFonts = this.systemFonts.filter(f =>
+      /Times|Georgia|Garamond|Palatino|Cambria|Baskerville|Arial|Helvetica|Verdana|Tahoma|Calibri|Segoe|Roboto|Open Sans|Lato|Montserrat|Futura|Gill/i.test(f)
+    );
+    const monoFonts = this.systemFonts.filter(f =>
+      /Consolas|Courier|Monaco|Menlo|Source Code|Fira|JetBrains|Inconsolata|IBM Plex Mono|Ubuntu Mono|Liberation Mono/i.test(f)
+    );
+    const otherFonts = this.systemFonts.filter(f =>
+      !chineseFonts.includes(f) && !westernFonts.includes(f) && !monoFonts.includes(f)
+    );
+
+    // Add grouped options
+    const addFontGroup = (label: string, fonts: string[]) => {
+      if (fonts.length === 0) return;
+      const group = fontFamilySelect.createEl("optgroup", { attr: { label } });
+      fonts.forEach((f) => {
+        group.createEl("option", {
+          text: this.getFontLabel(f),
+          value: `${f}, sans-serif`,
+        });
+      });
+    };
+
+    if (chineseFonts.length > 0) addFontGroup("中文字体", chineseFonts);
+    if (westernFonts.length > 0) addFontGroup("西文字体", westernFonts);
+    if (monoFonts.length > 0) addFontGroup("等宽字体", monoFonts);
+    if (otherFonts.length > 0) addFontGroup("其他字体", otherFonts);
+
+    fontFamilySelect.style.width = "120px";
     fontFamilySelect.style.fontSize = "12px";
     fontFamilySelect.addEventListener("change", () => {
       this.textFontFamily = fontFamilySelect.value;
@@ -510,6 +636,8 @@ export class PdfEditorView extends ItemView {
     const icons: Record<string, string> = {
       "panel-left":
         '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg>',
+      save: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>',
+      download: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>',
       "chevron-left":
         '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>',
       "chevron-right":
@@ -2021,6 +2149,195 @@ export class PdfEditorView extends ItemView {
         console.error("Failed to load annotations:", e);
       }
     }
+  }
+
+  /**
+   * Export annotations into the PDF file itself so other PDF readers can see them.
+   * Creates a new PDF with embedded annotations.
+   */
+  async exportAnnotationsToPdf(): Promise<void> {
+    if (!this.file) {
+      new Notice("没有打开的 PDF 文件");
+      return;
+    }
+
+    if (this.annotations.size === 0) {
+      new Notice("没有注释可导出");
+      return;
+    }
+
+    new Notice("正在导出注释到 PDF...");
+
+    try {
+      // Read the original PDF
+      const pdfBytes = await this.app.vault.readBinary(this.file);
+
+      // Load with pdf-lib
+      const pdfDoc = await PDFDocument.load(pdfBytes);
+
+      // Process each page's annotations
+      for (const [pageNum, annotations] of this.annotations.entries()) {
+        const page = pdfDoc.getPage(pageNum - 1); // pdf-lib uses 0-based index
+        const { width, height } = page.getSize();
+
+        for (const ann of annotations) {
+          if (ann.type === "text" && ann.content) {
+            // Add text annotation as a text overlay
+            await this.addTextToPdfPage(page, ann, height);
+          } else if (ann.type === "highlight") {
+            // Add highlight annotation
+            this.addHighlightToPdfPage(page, ann, height);
+          } else if (ann.type === "note") {
+            // Add note as a PDF comment annotation
+            this.addNoteToPdfPage(page, ann, height);
+          } else if (ann.type === "pen" && ann.points && ann.points.length > 1) {
+            // Add pen drawing as a path
+            this.addPenToPdfPage(page, ann, height);
+          }
+        }
+      }
+
+      // Save the modified PDF
+      const modifiedPdfBytes = await pdfDoc.save();
+
+      // Create output file with "_annotated" suffix
+      const baseName = this.file.basename.replace(/\.pdf$/i, "");
+      const outputPath = this.file.path.replace(/\.pdf$/i, "_annotated.pdf");
+
+      // Check if file exists and delete it
+      const existingFile = this.app.vault.getAbstractFileByPath(outputPath);
+      if (existingFile) {
+        await this.app.vault.delete(existingFile);
+      }
+
+      // Convert Uint8Array to ArrayBuffer for Obsidian API
+      const arrayBuffer = new ArrayBuffer(modifiedPdfBytes.byteLength);
+      new Uint8Array(arrayBuffer).set(modifiedPdfBytes);
+
+      // Create the new PDF file
+      await this.app.vault.createBinary(outputPath, arrayBuffer);
+
+      new Notice(`注释已导出到: ${baseName}_annotated.pdf`);
+    } catch (error) {
+      console.error("Failed to export annotations to PDF:", error);
+      new Notice("导出失败: " + (error as Error).message);
+    }
+  }
+
+  /**
+   * Add text annotation to a PDF page
+   */
+  private async addTextToPdfPage(page: any, ann: Annotation, pageHeight: number): Promise<void> {
+    // Use standard font (Helvetica supports basic Latin characters)
+    const font = await page.doc.embedFont(StandardFonts.Helvetica);
+
+    // Parse color
+    const color = this.parseColor(ann.fontColor || "#000000");
+
+    // PDF coordinates start from bottom-left, but our annotations are from top-left
+    const x = ann.x;
+    const y = pageHeight - ann.y - (ann.fontSize || 14);
+
+    // Draw text
+    page.drawText(ann.content || "", {
+      x: x,
+      y: y,
+      size: ann.fontSize || 14,
+      font: font,
+      color: rgb(color.r, color.g, color.b),
+    });
+  }
+
+  /**
+   * Add highlight annotation to a PDF page
+   */
+  private addHighlightToPdfPage(page: any, ann: Annotation, pageHeight: number): void {
+    // Parse highlight color
+    const color = this.parseColor(ann.color || "#FFFF00");
+
+    // PDF coordinates: convert from top-left to bottom-left origin
+    const x = ann.x;
+    const y = pageHeight - ann.y - ann.height;
+
+    // Draw a semi-transparent rectangle for the highlight
+    page.drawRectangle({
+      x: x,
+      y: y,
+      width: ann.width,
+      height: ann.height,
+      color: rgb(color.r, color.g, color.b),
+      opacity: 0.3,
+    });
+  }
+
+  /**
+   * Add note annotation as a PDF comment
+   */
+  private addNoteToPdfPage(page: any, ann: Annotation, pageHeight: number): void {
+    // PDF coordinates
+    const x = ann.x;
+    const y = pageHeight - ann.y;
+
+    // Add a text annotation (comment) to the PDF
+    page.node.context.register(
+      page.node.context.obj({
+        Type: "Annot",
+        Subtype: "Text",
+        Rect: [x, y, x + 20, y + 20],
+        Contents: ann.content || "",
+        Name: "Comment",
+        C: [1, 1, 0], // Yellow color
+        Open: false,
+      })
+    );
+  }
+
+  /**
+   * Add pen drawing to a PDF page as a path
+   */
+  private addPenToPdfPage(page: any, ann: Annotation, pageHeight: number): void {
+    if (!ann.points || ann.points.length < 2) return;
+
+    const color = this.parseColor(ann.color || "#FF0000");
+    const lineWidth = ann.lineWidth || 2;
+
+    // Convert points to PDF coordinates and draw lines
+    for (let i = 0; i < ann.points.length - 1; i++) {
+      const p1 = ann.points[i];
+      const p2 = ann.points[i + 1];
+
+      // Convert from top-left to bottom-left origin
+      const x1 = p1.x;
+      const y1 = pageHeight - p1.y;
+      const x2 = p2.x;
+      const y2 = pageHeight - p2.y;
+
+      page.drawLine({
+        start: { x: x1, y: y1 },
+        end: { x: x2, y: y2 },
+        thickness: lineWidth,
+        color: rgb(color.r, color.g, color.b),
+        opacity: 0.8,
+      });
+    }
+  }
+
+  /**
+   * Parse a hex color string to RGB values (0-1 range)
+   */
+  private parseColor(hex: string): { r: number; g: number; b: number } {
+    let h = hex.replace("#", "");
+    if (h.length === 3) {
+      h = h.split("").map(c => c + c).join("");
+    }
+    if (h.length !== 6) {
+      return { r: 0, g: 0, b: 0 }; // Default to black
+    }
+    return {
+      r: parseInt(h.substring(0, 2), 16) / 255,
+      g: parseInt(h.substring(2, 4), 16) / 255,
+      b: parseInt(h.substring(4, 6), 16) / 255,
+    };
   }
 
   private async cleanup(): Promise<void> {

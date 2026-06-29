@@ -1,4 +1,4 @@
-import { Plugin, TFile, TAbstractFile, WorkspaceLeaf, Menu } from "obsidian";
+import { Plugin, TFile, TAbstractFile, WorkspaceLeaf, Menu, Notice } from "obsidian";
 import {
   PdfEditorView,
   VIEW_TYPE_PDF_EDITOR,
@@ -85,6 +85,40 @@ export default class PdfEditorPlugin extends Plugin {
       name: "Toggle PDF Notes Sidebar",
       callback: () => {
         this.toggleNotesSidebar();
+      },
+    });
+
+    // Add command to manually save annotations
+    this.addCommand({
+      id: "save-pdf-annotations",
+      name: "Save PDF Annotations",
+      checkCallback: (checking) => {
+        const activeView = this.app.workspace.getActiveViewOfType(PdfEditorView);
+        if (activeView) {
+          if (!checking) {
+            activeView.saveAnnotations().then(() => {
+              new Notice("注释已保存");
+            });
+          }
+          return true;
+        }
+        return false;
+      },
+    });
+
+    // Add command to export annotations to PDF
+    this.addCommand({
+      id: "export-pdf-annotations",
+      name: "Export Annotations to PDF",
+      checkCallback: (checking) => {
+        const activeView = this.app.workspace.getActiveViewOfType(PdfEditorView);
+        if (activeView) {
+          if (!checking) {
+            activeView.exportAnnotationsToPdf();
+          }
+          return true;
+        }
+        return false;
       },
     });
 
