@@ -1,0 +1,20 @@
+{
+  "defaultScale": 1,
+  "enableAnnotations": true,
+  "enableTextEditing": false,
+  "sidebarVisible": true,
+  "highlightColor": "#FFFF00",
+  "penColor": "#2c2f81",
+  "penSize": 1,
+  "autoSave": true,
+  "autoSaveInterval": 5000,
+  "enablePressureSensitivity": true,
+  "pressureMinWidth": 1,
+  "pressureMaxWidth": 8,
+  "enablePalmRejection": true,
+  "enableLineSmoothing": true,
+  "smoothingFactor": 0.5,
+  "penButton1Tool": "eraser",
+  "penButton2Tool": "highlight",
+  "eraserSize": 50
+}

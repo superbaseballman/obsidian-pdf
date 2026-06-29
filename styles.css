@@ -1,0 +1,496 @@
+/* =========================================
+   PDF Editor Plugin Styles
+   ========================================= */
+
+/* PDF Viewer Container */
+.pdf-editor-container {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  /* Allow the container to receive keyboard focus so arrow-key navigation
+     works without requiring a click on a child element first. */
+  outline: none;
+}
+
+/* Toolbar */
+.pdf-editor-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--background-secondary);
+  border-bottom: 1px solid var(--background-modifier-border);
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+
+.pdf-editor-toolbar-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.pdf-editor-toolbar-group + .pdf-editor-toolbar-group {
+  border-left: 1px solid var(--background-modifier-border);
+  padding-left: 8px;
+}
+
+.pdf-editor-toolbar button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-normal);
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.pdf-editor-toolbar button:hover {
+  background: var(--background-modifier-hover);
+}
+
+.pdf-editor-toolbar button.active {
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+}
+
+/* Size controls in toolbar */
+.pdf-editor-size-group {
+  align-items: center;
+  gap: 4px;
+}
+
+.pdf-editor-size-control {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px;
+  background: var(--background-modifier-border);
+  border-radius: 4px;
+}
+
+.pdf-editor-size-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  user-select: none;
+  min-width: 12px;
+}
+
+.pdf-editor-size-value {
+  font-size: 11px;
+  color: var(--text-normal);
+  min-width: 16px;
+  text-align: center;
+}
+
+.pdf-editor-size-control input[type="range"] {
+  width: 60px;
+  height: 4px;
+  cursor: pointer;
+}
+
+.pdf-editor-toolbar button svg {
+  width: 18px;
+  height: 18px;
+}
+
+.pdf-editor-toolbar .page-info {
+  font-size: 13px;
+  color: var(--text-muted);
+  min-width: 80px;
+  text-align: center;
+  user-select: none;
+}
+
+.pdf-editor-toolbar input[type="number"] {
+  width: 50px;
+  height: 28px;
+  text-align: center;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 4px;
+  background: var(--background-primary);
+  color: var(--text-normal);
+  font-size: 13px;
+}
+
+.pdf-editor-toolbar input[type="number"]:focus {
+  outline: none;
+  border-color: var(--interactive-accent);
+}
+
+.pdf-editor-toolbar .zoom-control {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.pdf-editor-toolbar select {
+  height: 28px;
+  padding: 0 8px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 4px;
+  background: var(--background-primary);
+  color: var(--text-normal);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+/* PDF Canvas Area */
+.pdf-editor-viewer {
+  flex: 1;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 20px;
+  gap: 10px;
+  background: var(--background-primary);
+}
+
+.pdf-editor-page-wrapper {
+  position: relative;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  background: white;
+}
+
+.pdf-editor-page-canvas {
+  display: block;
+}
+
+.pdf-editor-text-layer {
+  position: absolute;
+  left: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  overflow: hidden;
+  opacity: 0.25;
+  line-height: 1;
+  pointer-events: none;
+}
+
+/* When the highlight tool is active, the text layer becomes interactive so
+   the user can select text to highlight. */
+.pdf-editor-text-layer.selectable {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.pdf-editor-text-layer > span {
+  color: transparent;
+  position: absolute;
+  white-space: pre;
+  transform-origin: 0% 0%;
+}
+
+.pdf-editor-text-layer ::selection {
+  background: rgba(0, 0, 255, 0.25);
+}
+
+/* Annotation Layer */
+.pdf-editor-annotation-layer {
+  position: absolute;
+  left: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+}
+
+.pdf-editor-annotation-layer > * {
+  pointer-events: auto;
+}
+
+/* Editable annotation */
+.pdf-editor-annotation {
+  position: absolute;
+  border: 2px solid transparent;
+  border-radius: 2px;
+  cursor: move;
+  transition: border-color 0.15s ease;
+}
+
+.pdf-editor-annotation:hover {
+  border-color: var(--interactive-accent);
+}
+
+.pdf-editor-annotation.selected {
+  border-color: var(--interactive-accent);
+  box-shadow: 0 0 0 1px var(--interactive-accent);
+}
+
+.pdf-editor-annotation .resize-handle {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  background: var(--interactive-accent);
+  border-radius: 50%;
+  display: none;
+}
+
+.pdf-editor-annotation.selected .resize-handle {
+  display: block;
+}
+
+.pdf-editor-annotation .resize-handle.nw { top: -4px; left: -4px; cursor: nw-resize; }
+.pdf-editor-annotation .resize-handle.ne { top: -4px; right: -4px; cursor: ne-resize; }
+.pdf-editor-annotation .resize-handle.sw { bottom: -4px; left: -4px; cursor: sw-resize; }
+.pdf-editor-annotation .resize-handle.se { bottom: -4px; right: -4px; cursor: se-resize; }
+
+/* Text annotation */
+.pdf-editor-text-annotation {
+  background: transparent;
+  border: 1px dashed var(--text-faint);
+  padding: 4px;
+  font-size: 14px;
+  color: var(--text-normal);
+  min-width: 100px;
+  min-height: 30px;
+  outline: none;
+  resize: none;
+  overflow: hidden;
+}
+
+.pdf-editor-text-annotation:focus {
+  border-color: var(--interactive-accent);
+  border-style: solid;
+}
+
+/* Highlight annotation */
+.pdf-editor-highlight {
+  background: rgba(255, 255, 0, 0.3);
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+/* Note annotation */
+.pdf-editor-note-icon {
+  width: 24px;
+  height: 24px;
+  background: var(--interactive-accent);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 14px;
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  transition: all 0.2s ease;
+  z-index: 50;
+  /* Use a CSS-drawn icon instead of an emoji so it renders consistently
+     across platforms. */
+}
+
+.pdf-editor-note-icon::before {
+  content: "";
+  width: 10px;
+  height: 10px;
+  border: 2px solid white;
+  border-radius: 2px;
+}
+
+.pdf-editor-note-icon.highlighted {
+  background: var(--text-accent);
+  box-shadow: 0 0 0 3px var(--text-accent), 0 0 12px var(--text-accent);
+  transform: scale(1.3);
+  z-index: 100;
+}
+
+/* Drawing overlay */
+.pdf-editor-drawing-layer {
+  position: absolute;
+  left: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+}
+
+.pdf-editor-drawing-layer.active {
+  pointer-events: auto;
+  cursor: crosshair;
+}
+
+.pdf-editor-drawing-layer canvas {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+}
+
+/* Sidebar - Thumbnail & Outline */
+.pdf-editor-sidebar {
+  width: 200px;
+  border-right: 1px solid var(--background-modifier-border);
+  background: var(--background-secondary);
+  overflow-y: auto;
+  flex-shrink: 0;
+  display: none;
+}
+
+.pdf-editor-sidebar.visible {
+  display: block;
+}
+
+.pdf-editor-sidebar-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.pdf-editor-sidebar-tab {
+  flex: 1;
+  padding: 8px;
+  text-align: center;
+  font-size: 12px;
+  cursor: pointer;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  border-bottom: 2px solid transparent;
+}
+
+.pdf-editor-sidebar-tab.active {
+  color: var(--text-normal);
+  border-bottom-color: var(--interactive-accent);
+}
+
+.pdf-editor-thumbnail-list {
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.pdf-editor-thumbnail {
+  cursor: pointer;
+  border: 2px solid transparent;
+  border-radius: 4px;
+  overflow: hidden;
+  transition: border-color 0.15s ease;
+}
+
+.pdf-editor-thumbnail:hover {
+  border-color: var(--background-modifier-border);
+}
+
+.pdf-editor-thumbnail.active {
+  border-color: var(--interactive-accent);
+}
+
+.pdf-editor-thumbnail canvas {
+  width: 100%;
+  display: block;
+}
+
+.pdf-editor-thumbnail .page-number {
+  text-align: center;
+  font-size: 11px;
+  color: var(--text-muted);
+  padding: 4px 0;
+}
+
+.pdf-editor-outline-list {
+  padding: 8px;
+}
+
+.pdf-editor-outline-item {
+  padding: 6px 8px;
+  font-size: 13px;
+  color: var(--text-normal);
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background 0.15s ease;
+}
+
+.pdf-editor-outline-item:hover {
+  background: var(--background-modifier-hover);
+}
+
+.pdf-editor-outline-item.level-1 { padding-left: 8px; }
+.pdf-editor-outline-item.level-2 { padding-left: 24px; }
+.pdf-editor-outline-item.level-3 { padding-left: 40px; }
+
+/* Status bar */
+.pdf-editor-statusbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 12px;
+  background: var(--background-secondary);
+  border-top: 1px solid var(--background-modifier-border);
+  font-size: 12px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+/* Color picker */
+.pdf-editor-color-picker {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+}
+
+.pdf-editor-color-swatch {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: border-color 0.15s ease;
+}
+
+.pdf-editor-color-swatch:hover,
+.pdf-editor-color-swatch.active {
+  border-color: var(--text-normal);
+}
+
+/* Loading indicator */
+.pdf-editor-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  min-height: 120px;
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+.pdf-editor-loading::before {
+  content: "";
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--background-modifier-border);
+  border-top-color: var(--interactive-accent);
+  border-radius: 50%;
+  animation: pdf-editor-spin 0.8s linear infinite;
+  margin-right: 8px;
+}
+
+@keyframes pdf-editor-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .pdf-editor-toolbar {
+    padding: 4px 8px;
+    gap: 4px;
+  }
+
+  .pdf-editor-sidebar {
+    width: 160px;
+  }
+
+  .pdf-editor-viewer {
+    padding: 10px;
+  }
+}
