@@ -21,6 +21,7 @@ export interface PdfEditorSettings {
   penButton1Tool: string;
   penButton2Tool: string;
   eraserSize: number;
+  noteIconSvg: string;
 }
 
 export const DEFAULT_SETTINGS: PdfEditorSettings = {
@@ -43,6 +44,7 @@ export const DEFAULT_SETTINGS: PdfEditorSettings = {
   penButton1Tool: "eraser",
   penButton2Tool: "highlight",
   eraserSize: 20,
+  noteIconSvg: "",
 };
 
 export class PdfEditorSettingTab extends PluginSettingTab {
@@ -323,5 +325,23 @@ export class PdfEditorSettingTab extends PluginSettingTab {
             await this.plugin.saveSettings();
           })
       );
+
+    // Note Icon SVG
+    const noteIconSetting = new Setting(containerEl)
+      .setName("备注图标 SVG")
+      .setDesc("自定义备注图标的 SVG 代码，留空使用默认图标");
+    const noteIconArea = noteIconSetting.controlEl.createEl("textarea", {
+      cls: "pdf-editor-note-icon-svg-input",
+      attr: {
+        placeholder: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>',
+        rows: "3",
+        style: "width: 100%; font-family: monospace; font-size: 12px; margin-top: 4px;",
+      },
+    });
+    noteIconArea.value = this.plugin.settings.noteIconSvg;
+    noteIconArea.addEventListener("change", async () => {
+      this.plugin.settings.noteIconSvg = noteIconArea.value.trim();
+      await this.plugin.saveSettings();
+    });
   }
 }

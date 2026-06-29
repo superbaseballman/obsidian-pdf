@@ -110,7 +110,6 @@ export class PdfEditorView extends ItemView {
   statusbarEl!: HTMLElement;
   thumbContentEl!: HTMLElement;
   outlineContentEl!: HTMLElement;
-  notesContentEl!: HTMLElement;
 
   // Size controls
   penSizeContainer!: HTMLElement;
@@ -493,10 +492,6 @@ export class PdfEditorView extends ItemView {
       text: "大纲",
       cls: "pdf-editor-sidebar-tab",
     });
-    const notesTab = tabs.createEl("button", {
-      text: "备注",
-      cls: "pdf-editor-sidebar-tab",
-    });
 
     this.thumbContentEl = this.sidebarEl.createEl("div", {
       cls: "pdf-editor-thumbnail-list",
@@ -505,28 +500,19 @@ export class PdfEditorView extends ItemView {
       cls: "pdf-editor-outline-list",
       attr: { style: "display: none;" },
     });
-    this.notesContentEl = this.sidebarEl.createEl("div", {
-      cls: "pdf-editor-notes-list",
-      attr: { style: "display: none;" },
-    });
 
     const showTab = (active: HTMLElement) => {
-      [thumbTab, outlineTab, notesTab].forEach((t) => t.removeClass("active"));
-      [this.thumbContentEl, this.outlineContentEl, this.notesContentEl].forEach(
+      [thumbTab, outlineTab].forEach((t) => t.removeClass("active"));
+      [this.thumbContentEl, this.outlineContentEl].forEach(
         (c) => (c.style.display = "none")
       );
       active.addClass("active");
       if (active === thumbTab) this.thumbContentEl.style.display = "";
       else if (active === outlineTab) this.outlineContentEl.style.display = "";
-      else this.notesContentEl.style.display = "";
     };
 
     thumbTab.addEventListener("click", () => showTab(thumbTab));
     outlineTab.addEventListener("click", () => showTab(outlineTab));
-    notesTab.addEventListener("click", () => {
-      showTab(notesTab);
-      this.renderNotesList();
-    });
   }
 
   // Render the list of notes in the sidebar
@@ -547,79 +533,11 @@ export class PdfEditorView extends ItemView {
     this.app.workspace.trigger("pdf-editor:notes-changed");
   }
 
+  // Notes list rendering has been moved to PdfNotesSidebarView (notes-sidebar.ts).
+  // This method is kept as a no-op for backward compatibility with any
+  // remaining call sites; it simply notifies the sidebar to refresh.
   private renderNotesList(): void {
-    if (!this.notesContentEl) return;
-    this.notesContentEl.empty();
     this.notifyNotesChanged();
-
-    // Collect all notes across pages, sorted by page number
-    const notes: { ann: Annotation; pageNum: number }[] = [];
-    const sortedPages = Array.from(this.annotations.keys()).sort((a, b) => a - b);
-    for (const pageNum of sortedPages) {
-      for (const ann of this.annotations.get(pageNum) || []) {
-        if (ann.type === "note") notes.push({ ann, pageNum });
-      }
-    }
-
-    if (notes.length === 0) {
-      this.notesContentEl.createEl("div", {
-        text: "暂无备注",
-        cls: "pdf-editor-notes-empty",
-      });
-      return;
-    }
-
-    for (const { ann, pageNum } of notes) {
-      const item = this.notesContentEl.createEl("div", {
-        cls: "pdf-editor-note-item",
-        attr: { "data-annotation-id": ann.id },
-      });
-      item.createEl("div", {
-        text: `第 ${pageNum} 页`,
-        cls: "pdf-editor-note-item-page",
-      });
-      const body = item.createEl("div", {
-        text: ann.content || "(空备注)",
-        cls: "pdf-editor-note-item-body",
-      });
-
-      // Click: jump to the page and highlight the note icon
-      item.addEventListener("click", () => {
-        this.goToPage(pageNum);
-        // Highlight the corresponding note icon after scroll
-        setTimeout(() => {
-          const wrapper = this.viewerEl.querySelector<HTMLElement>(
-            `.pdf-editor-page-wrapper:nth-child(${pageNum})`
-          );
-          const icon = wrapper?.querySelector<HTMLElement>(
-            `[data-annotation-id="${ann.id}"]`
-          );
-          if (icon) this.highlightNote(icon);
-        }, 100);
-      });
-
-      // Right-click: edit the note content
-      item.addEventListener("contextmenu", (e) => {
-        e.preventDefault();
-        const modal = new NoteModal(this.app, ann.content || "", (content) => {
-          ann.content = content;
-          // Update icon tooltip
-          const wrapper = this.viewerEl.querySelector<HTMLElement>(
-            `.pdf-editor-page-wrapper:nth-child(${pageNum})`
-          );
-          const icon = wrapper?.querySelector<HTMLElement>(
-            `[data-annotation-id="${ann.id}"]`
-          );
-          if (icon && content) {
-            icon.setAttribute("aria-label", content.substring(0, 50));
-          }
-          // Refresh the list and body text
-          body.setText(content || "(空备注)");
-          this.saveAnnotations();
-        });
-        modal.open();
-      });
-    }
   }
 
   private createStatusbar(): void {
@@ -840,13 +758,17 @@ export class PdfEditorView extends ItemView {
     ann: Annotation
   ): void {
     const annotations = this.annotations.get(pageNum) || [];
+    const customSvg = this.plugin.settings.noteIconSvg;
     const noteIcon = wrapper.createEl("div", {
-      cls: "pdf-editor-note-icon pdf-editor-annotation",
+      cls: "pdf-editor-note-icon pdf-editor-annotation" + (customSvg ? " custom-svg" : ""),
       attr: {
         style: `left: ${ann.x * this.scale}px; top: ${ann.y * this.scale}px;`,
         "data-annotation-id": ann.id,
       },
     });
+    if (customSvg) {
+      noteIcon.innerHTML = customSvg;
+    }
     if (ann.content) {
       noteIcon.setAttribute("aria-label", ann.content.substring(0, 50));
     }
@@ -855,16 +777,15 @@ export class PdfEditorView extends ItemView {
       e.stopPropagation();
       this.highlightNote(noteIcon);
 
-      const modal = new NoteModal(this.app, ann.content || "", (content) => {
-        if (content) {
-          const found = annotations.find((a) => a.id === ann.id);
-          if (found) found.content = content;
-          noteIcon.setAttribute("aria-label", content.substring(0, 50));
-          this.renderNotesList();
-          this.saveAnnotations();
-        }
+      // Ensure notes sidebar is open, then focus and highlight the entry
+      this.plugin.toggleNotesSidebar().then(() => {
+        setTimeout(() => {
+          this.app.workspace.trigger("pdf-editor:focus-note", {
+            noteId: ann.id,
+            pageNum: pageNum,
+          });
+        }, 150);
       });
-      modal.open();
     });
 
     noteIcon.addEventListener("contextmenu", (e) => {
@@ -1564,13 +1485,17 @@ export class PdfEditorView extends ItemView {
     annotations.push(noteAnn);
     this.annotations.set(pageNum, annotations);
 
+    const customSvg = this.plugin.settings.noteIconSvg;
     const noteIcon = wrapper.createEl("div", {
-      cls: "pdf-editor-note-icon pdf-editor-annotation",
+      cls: "pdf-editor-note-icon pdf-editor-annotation" + (customSvg ? " custom-svg" : ""),
       attr: {
         style: `left: ${x}px; top: ${y}px;`,
         "data-annotation-id": noteId,
       },
     });
+    if (customSvg) {
+      noteIcon.innerHTML = customSvg;
+    }
 
     noteIcon.addEventListener("click", (e) => {
       e.stopPropagation();
@@ -1630,19 +1555,6 @@ export class PdfEditorView extends ItemView {
       `[data-annotation-id="${noteId}"]`
     );
     if (icon) this.highlightNote(icon);
-  }
-
-  updateNoteIcon(noteId: string, pageNum: number, content: string): void {
-    const wrapper = this.viewerEl.querySelector<HTMLElement>(
-      `.pdf-editor-page-wrapper:nth-child(${pageNum})`
-    );
-    const icon = wrapper?.querySelector<HTMLElement>(
-      `[data-annotation-id="${noteId}"]`
-    );
-    if (icon && content) {
-      icon.setAttribute("aria-label", content.substring(0, 50));
-    }
-    this.renderNotesList();
   }
 
   deleteNote(noteId: string, pageNum: number): void {

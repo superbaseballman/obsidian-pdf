@@ -297,6 +297,34 @@
   border-radius: 2px;
 }
 
+.pdf-editor-note-icon.custom-svg {
+  background: transparent;
+  border-radius: 0;
+  box-shadow: none;
+  width: auto;
+  height: auto;
+}
+
+.pdf-editor-note-icon.custom-svg::before {
+  display: none;
+}
+
+.pdf-editor-note-icon.custom-svg svg {
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: white;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.pdf-editor-note-icon.custom-svg.highlighted {
+  background: transparent;
+  box-shadow: none;
+  transform: none;
+}
+
 .pdf-editor-note-icon.highlighted {
   background: var(--text-accent);
   box-shadow: 0 0 0 3px var(--text-accent), 0 0 12px var(--text-accent);
@@ -402,53 +430,6 @@
   padding: 8px;
 }
 
-/* Notes list in sidebar */
-.pdf-editor-notes-list {
-  padding: 8px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.pdf-editor-notes-empty {
-  padding: 16px 8px;
-  text-align: center;
-  font-size: 12px;
-  color: var(--text-muted);
-}
-
-.pdf-editor-note-item {
-  padding: 8px;
-  border-radius: 4px;
-  background: var(--background-primary);
-  border: 1px solid var(--background-modifier-border);
-  cursor: pointer;
-  transition: background 0.15s ease, border-color 0.15s ease;
-}
-
-.pdf-editor-note-item:hover {
-  background: var(--background-modifier-hover);
-  border-color: var(--interactive-accent);
-}
-
-.pdf-editor-note-item-page {
-  font-size: 11px;
-  color: var(--text-muted);
-  margin-bottom: 4px;
-  font-weight: 600;
-}
-
-.pdf-editor-note-item-body {
-  font-size: 13px;
-  color: var(--text-normal);
-  line-height: 1.4;
-  word-break: break-word;
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
 /* ===== Notes sidebar (Obsidian side dock) ===== */
 .pdf-notes-sidebar {
   padding: 0;
@@ -488,7 +469,7 @@
   background: var(--background-secondary);
   border: 1px solid var(--background-modifier-border);
   cursor: pointer;
-  transition: background 0.15s ease, border-color 0.15s ease;
+  transition: background 0.4s ease, border-color 0.4s ease, box-shadow 0.4s ease;
 }
 
 .pdf-notes-sidebar-item:hover {
@@ -517,6 +498,34 @@
   -webkit-line-clamp: 4;
   -webkit-box-orient: vertical;
   overflow: hidden;
+  cursor: text;
+}
+
+.pdf-notes-sidebar-item.active {
+  border-color: var(--interactive-accent);
+  background: var(--background-modifier-hover);
+  box-shadow: 0 0 0 2px rgba(var(--interactive-accent-rgb), 0.3);
+}
+
+.pdf-notes-sidebar-item-textarea {
+  width: 100%;
+  min-height: 60px;
+  resize: vertical;
+  border: 1px solid var(--interactive-accent);
+  border-radius: 4px;
+  padding: 6px;
+  font-size: 13px;
+  font-family: inherit;
+  color: var(--text-normal);
+  background: var(--background-primary);
+  outline: none;
+  line-height: 1.4;
+  box-sizing: border-box;
+}
+
+.pdf-notes-sidebar-item-textarea:focus {
+  border-color: var(--interactive-accent);
+  box-shadow: 0 0 0 1px var(--interactive-accent);
 }
 
 .pdf-editor-outline-item {
