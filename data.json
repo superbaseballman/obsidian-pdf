@@ -5,7 +5,7 @@
   "sidebarVisible": true,
   "highlightColor": "#FFFF00",
   "penColor": "#2c2f81",
-  "penSize": 5,
+  "penSize": 0,
   "autoSave": true,
   "autoSaveInterval": 5000,
   "enablePressureSensitivity": false,
@@ -17,5 +17,6 @@
   "penButton1Tool": "eraser",
   "penButton2Tool": "highlight",
   "eraserSize": 50,
-  "noteIconSvg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 100 100\" width=\"100\" height=\"100\">\n  <!-- 屋顶 - 三角形 -->\n  <polygon points=\"50,10 10,40 90,40\" fill=\"#E67E22\" stroke=\"#D35400\" stroke-width=\"2\"/>\n\n  <!-- 墙壁 - 矩形 -->\n  <rect x=\"10\" y=\"40\" width=\"80\" height=\"50\" fill=\"#FDF2E9\" stroke=\"#BDC3C7\" stroke-width=\"2\"/>\n\n  <!-- 门 - 矩形 -->\n  <rect x=\"40\" y=\"60\" width=\"20\" height=\"30\" fill=\"#6E2C00\" stroke=\"#4A1A00\" stroke-width=\"1.5\" rx=\"2\"/>\n\n  <!-- 门把手 - 圆形 -->\n  <circle cx=\"55\" cy=\"75\" r=\"2.5\" fill=\"#F1C40F\"/>\n\n  <!-- 窗户 - 左 -->\n  <rect x=\"18\" y=\"50\" width=\"15\" height=\"15\" fill=\"#AED6F1\" stroke=\"#5D6D7E\" stroke-width=\"1.5\" rx=\"1\"/>\n  <!-- 窗户玻璃反光 - 左 -->\n  <line x1=\"18\" y1=\"50\" x2=\"33\" y2=\"65\" stroke=\"#FFFFFF\" stroke-width=\"1.5\" opacity=\"0.5\"/>\n  <line x1=\"18\" y1=\"65\" x2=\"33\" y2=\"50\" stroke=\"#FFFFFF\" stroke-width=\"1.5\" opacity=\"0.5\"/>\n\n  <!-- 窗户 - 右 -->\n  <rect x=\"67\" y=\"50\" width=\"15\" height=\"15\" fill=\"#AED6F1\" stroke=\"#5D6D7E\" stroke-width=\"1.5\" rx=\"1\"/>\n  <!-- 窗户玻璃反光 - 右 -->\n  <line x1=\"67\" y1=\"50\" x2=\"82\" y2=\"65\" stroke=\"#FFFFFF\" stroke-width=\"1.5\" opacity=\"0.5\"/>\n  <line x1=\"67\" y1=\"65\" x2=\"82\" y2=\"50\" stroke=\"#FFFFFF\" stroke-width=\"1.5\" opacity=\"0.5\"/>\n</svg>"
+  "noteIconSvg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 100 100\" width=\"100\" height=\"100\">\n  <!-- 屋顶 - 三角形 -->\n  <polygon points=\"50,10 10,40 90,40\" fill=\"#E67E22\" stroke=\"#D35400\" stroke-width=\"2\"/>\n\n  <!-- 墙壁 - 矩形 -->\n  <rect x=\"10\" y=\"40\" width=\"80\" height=\"50\" fill=\"#FDF2E9\" stroke=\"#BDC3C7\" stroke-width=\"2\"/>\n\n  <!-- 门 - 矩形 -->\n  <rect x=\"40\" y=\"60\" width=\"20\" height=\"30\" fill=\"#6E2C00\" stroke=\"#4A1A00\" stroke-width=\"1.5\" rx=\"2\"/>\n\n  <!-- 门把手 - 圆形 -->\n  <circle cx=\"55\" cy=\"75\" r=\"2.5\" fill=\"#F1C40F\"/>\n\n  <!-- 窗户 - 左 -->\n  <rect x=\"18\" y=\"50\" width=\"15\" height=\"15\" fill=\"#AED6F1\" stroke=\"#5D6D7E\" stroke-width=\"1.5\" rx=\"1\"/>\n  <!-- 窗户玻璃反光 - 左 -->\n  <line x1=\"18\" y1=\"50\" x2=\"33\" y2=\"65\" stroke=\"#FFFFFF\" stroke-width=\"1.5\" opacity=\"0.5\"/>\n  <line x1=\"18\" y1=\"65\" x2=\"33\" y2=\"50\" stroke=\"#FFFFFF\" stroke-width=\"1.5\" opacity=\"0.5\"/>\n\n  <!-- 窗户 - 右 -->\n  <rect x=\"67\" y=\"50\" width=\"15\" height=\"15\" fill=\"#AED6F1\" stroke=\"#5D6D7E\" stroke-width=\"1.5\" rx=\"1\"/>\n  <!-- 窗户玻璃反光 - 右 -->\n  <line x1=\"67\" y1=\"50\" x2=\"82\" y2=\"65\" stroke=\"#FFFFFF\" stroke-width=\"1.5\" opacity=\"0.5\"/>\n  <line x1=\"67\" y1=\"65\" x2=\"82\" y2=\"50\" stroke=\"#FFFFFF\" stroke-width=\"1.5\" opacity=\"0.5\"/>\n</svg>",
+  "twoPageView": false
 }

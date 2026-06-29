@@ -247,7 +247,7 @@
 /* Text annotation */
 .pdf-editor-text-annotation {
   background: transparent;
-  border: 1px dashed var(--text-faint);
+  border: 1px dashed transparent;
   padding: 4px;
   font-size: 14px;
   color: var(--text-normal);
@@ -256,11 +256,23 @@
   outline: none;
   resize: none;
   overflow: hidden;
+  cursor: text;
+}
+
+.pdf-editor-text-annotation:hover {
+  border-color: var(--text-faint);
 }
 
 .pdf-editor-text-annotation:focus {
   border-color: var(--interactive-accent);
   border-style: solid;
+  cursor: text;
+}
+
+.pdf-editor-text-annotation.dragging {
+  cursor: move;
+  border-color: var(--interactive-accent);
+  border-style: dashed;
 }
 
 /* Highlight annotation */

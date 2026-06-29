@@ -88,6 +88,9 @@ export interface Annotation {
   height: number;
   content?: string;
   color?: string;
+  fontSize?: number;
+  fontColor?: string;
+  fontFamily?: string;
   points?: DrawingPoint[];
   lineWidth?: number;
 }
@@ -116,6 +119,12 @@ export class PdfEditorView extends ItemView {
   eraserSizeContainer!: HTMLElement;
   penSizeValue!: HTMLElement;
   eraserSizeValue!: HTMLElement;
+
+  // Text style controls
+  textControlsContainer!: HTMLElement;
+  textFontSize: number = 14;
+  textFontColor: string = "var(--text-normal)";
+  textFontFamily: string = "inherit";
 
   // Canvas contexts
   pageCanvases: Map<number, HTMLCanvasElement> = new Map();
@@ -417,6 +426,68 @@ export class PdfEditorView extends ItemView {
       this.plugin.saveSettings();
     });
 
+    // Text style controls (shown when text tool is active)
+    this.textControlsContainer = this.toolbarEl.createEl("div", {
+      cls: "pdf-editor-toolbar-group",
+      attr: { style: "display: none;" },
+    });
+
+    // Font size
+    const fontSizeSelect = this.textControlsContainer.createEl("select", {
+      attr: { title: "字号" },
+    });
+    [10, 12, 14, 16, 18, 20, 24, 28, 32, 36, 48].forEach((s) => {
+      fontSizeSelect.createEl("option", {
+        text: `${s}`,
+        value: String(s),
+        attr: s === 14 ? { selected: "selected" } : {},
+      });
+    });
+    fontSizeSelect.style.width = "52px";
+    fontSizeSelect.style.fontSize = "12px";
+    fontSizeSelect.addEventListener("change", () => {
+      this.textFontSize = parseInt(fontSizeSelect.value);
+    });
+
+    // Font color
+    const fontColorInput = this.textControlsContainer.createEl("input", {
+      type: "color",
+      value: "#ffffff",
+      attr: { title: "文字颜色" },
+    });
+    fontColorInput.style.width = "28px";
+    fontColorInput.style.height = "28px";
+    fontColorInput.style.padding = "0";
+    fontColorInput.style.border = "none";
+    fontColorInput.style.cursor = "pointer";
+    fontColorInput.addEventListener("input", () => {
+      this.textFontColor = fontColorInput.value;
+    });
+
+    // Font family
+    const fontFamilySelect = this.textControlsContainer.createEl("select", {
+      attr: { title: "字体" },
+    });
+    [
+      { label: "默认", value: "inherit" },
+      { label: "宋体", value: "SimSun, serif" },
+      { label: "黑体", value: "SimHei, sans-serif" },
+      { label: "楷体", value: "KaiTi, serif" },
+      { label: "Arial", value: "Arial, sans-serif" },
+      { label: "Times", value: "Times New Roman, serif" },
+      { label: "Monospace", value: "monospace" },
+    ].forEach((f) => {
+      fontFamilySelect.createEl("option", {
+        text: f.label,
+        value: f.value,
+      });
+    });
+    fontFamilySelect.style.width = "80px";
+    fontFamilySelect.style.fontSize = "12px";
+    fontFamilySelect.addEventListener("change", () => {
+      this.textFontFamily = fontFamilySelect.value;
+    });
+
     this.updateSizeControls();
   }
 
@@ -701,7 +772,7 @@ export class PdfEditorView extends ItemView {
     const textarea = wrapper.createEl("textarea", {
       cls: "pdf-editor-text-annotation pdf-editor-annotation",
       attr: {
-        style: `left: ${ann.x * this.scale}px; top: ${ann.y * this.scale}px; width: ${ann.width}px; height: ${ann.height}px;`,
+        style: `left: ${ann.x * this.scale}px; top: ${ann.y * this.scale}px; width: ${ann.width}px; height: ${ann.height}px; font-size: ${ann.fontSize || 14}px; color: ${ann.fontColor || "var(--text-normal)"}; font-family: ${ann.fontFamily || "inherit"};`,
         placeholder: "输入文本...",
         "data-annotation-id": ann.id,
       },
@@ -718,6 +789,64 @@ export class PdfEditorView extends ItemView {
         const idx = annotations.findIndex((a) => a.id === ann.id);
         if (idx !== -1) annotations.splice(idx, 1);
         textarea.remove();
+      }
+    });
+
+    this.makeTextDraggable(textarea, ann.id, pageNum);
+  }
+
+  /**
+   * Make a text annotation textarea draggable. Dragging starts on pointerdown
+   * when the textarea is not focused (i.e. user clicks on border area or
+   * when the select tool is active).
+   */
+  private makeTextDraggable(
+    textarea: HTMLTextAreaElement,
+    annotationId: string,
+    pageNum: number
+  ): void {
+    let isDragging = false;
+    let startX = 0;
+    let startY = 0;
+    let origLeft = 0;
+    let origTop = 0;
+
+    textarea.addEventListener("pointerdown", (e) => {
+      // Only start drag when textarea is not focused (not actively typing)
+      if (document.activeElement === textarea) return;
+      // Only drag with primary button
+      if (e.button !== 0) return;
+
+      isDragging = true;
+      startX = e.clientX;
+      startY = e.clientY;
+      origLeft = textarea.offsetLeft;
+      origTop = textarea.offsetTop;
+      textarea.addClass("dragging");
+      textarea.setPointerCapture(e.pointerId);
+      e.preventDefault();
+    });
+
+    textarea.addEventListener("pointermove", (e) => {
+      if (!isDragging) return;
+      const dx = e.clientX - startX;
+      const dy = e.clientY - startY;
+      textarea.style.left = `${origLeft + dx}px`;
+      textarea.style.top = `${origTop + dy}px`;
+    });
+
+    textarea.addEventListener("pointerup", (e) => {
+      if (!isDragging) return;
+      isDragging = false;
+      textarea.removeClass("dragging");
+
+      // Save new position to annotation
+      const annotations = this.annotations.get(pageNum) || [];
+      const ann = annotations.find((a) => a.id === annotationId);
+      if (ann) {
+        ann.x = textarea.offsetLeft / this.scale;
+        ann.y = textarea.offsetTop / this.scale;
+        this.saveAnnotations();
       }
     });
   }
@@ -1344,7 +1473,7 @@ export class PdfEditorView extends ItemView {
     const annotation = wrapper.createEl("textarea", {
       cls: "pdf-editor-text-annotation pdf-editor-annotation",
       attr: {
-        style: `left: ${x}px; top: ${y}px;`,
+        style: `left: ${x}px; top: ${y}px; font-size: ${this.textFontSize}px; color: ${this.textFontColor}; font-family: ${this.textFontFamily};`,
         placeholder: "输入文本...",
         "data-annotation-id": annotationId,
       },
@@ -1362,6 +1491,9 @@ export class PdfEditorView extends ItemView {
       width: 150,
       height: 30,
       content: "",
+      fontSize: this.textFontSize,
+      fontColor: this.textFontColor,
+      fontFamily: this.textFontFamily,
     });
     this.annotations.set(pageNum, annotations);
 
@@ -1377,6 +1509,8 @@ export class PdfEditorView extends ItemView {
         annotation.remove();
       }
     });
+
+    this.makeTextDraggable(annotation, annotationId, pageNum);
   }
 
   private addHighlight(
@@ -1703,6 +1837,11 @@ export class PdfEditorView extends ItemView {
         this.penSizeContainer.style.display = "none";
         this.eraserSizeContainer.style.display = "none";
       }
+    }
+    // Show/hide text style controls
+    if (this.textControlsContainer) {
+      this.textControlsContainer.style.display =
+        this.currentTool === "text" ? "flex" : "none";
     }
   }
 
