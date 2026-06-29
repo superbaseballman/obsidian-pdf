@@ -2,7 +2,7 @@
   "defaultScale": 1,
   "enableAnnotations": true,
   "enableTextEditing": false,
-  "sidebarVisible": true,
+  "sidebarVisible": false,
   "highlightColor": "#FFFF00",
   "penColor": "#2c2f81",
   "penSize": 1,

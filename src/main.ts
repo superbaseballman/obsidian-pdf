@@ -4,6 +4,10 @@ import {
   VIEW_TYPE_PDF_EDITOR,
 } from "./pdf-view";
 import {
+  PdfNotesSidebarView,
+  VIEW_TYPE_PDF_NOTES,
+} from "./notes-sidebar";
+import {
   PdfEditorSettings,
   DEFAULT_SETTINGS,
   PdfEditorSettingTab,
@@ -19,6 +23,12 @@ export default class PdfEditorPlugin extends Plugin {
     this.registerView(
       VIEW_TYPE_PDF_EDITOR,
       (leaf) => new PdfEditorView(leaf, this)
+    );
+
+    // Register the notes sidebar view (lives in Obsidian's side dock)
+    this.registerView(
+      VIEW_TYPE_PDF_NOTES,
+      (leaf) => new PdfNotesSidebarView(leaf, this)
     );
 
     // Register settings tab
@@ -66,6 +76,15 @@ export default class PdfEditorPlugin extends Plugin {
         if (activeView) {
           activeView.toggleSidebar();
         }
+      },
+    });
+
+    // Add command to toggle the notes sidebar (Obsidian side dock)
+    this.addCommand({
+      id: "toggle-pdf-notes-sidebar",
+      name: "Toggle PDF Notes Sidebar",
+      callback: () => {
+        this.toggleNotesSidebar();
       },
     });
 
@@ -171,6 +190,25 @@ export default class PdfEditorPlugin extends Plugin {
 
   onunload(): void {
     console.log("PDF Editor plugin unloaded");
+  }
+
+  // Toggle the notes sidebar in Obsidian's right side dock
+  async toggleNotesSidebar(): Promise<void> {
+    const { workspace } = this.app;
+    const existing = workspace.getLeavesOfType(VIEW_TYPE_PDF_NOTES);
+    if (existing.length > 0) {
+      // Already open: reveal it (or detach to toggle off)
+      workspace.revealLeaf(existing[0]);
+      return;
+    }
+    const leaf = workspace.getRightLeaf(false);
+    if (leaf) {
+      await leaf.setViewState({
+        type: VIEW_TYPE_PDF_NOTES,
+        active: true,
+      });
+      workspace.revealLeaf(leaf);
+    }
   }
 
   async loadSettings(): Promise<void> {
